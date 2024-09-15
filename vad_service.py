@@ -88,10 +88,6 @@ async def vad_endpoint(audio_file: UploadFile = File(...)):
         print(f"Received audio file of size: {len(audio_data)} bytes")
 
         # Convert audio to WAV format if needed
-        if audio_file.content_type != "audio/wav":
-            print("Converting to WAV format...")
-            audio_data = convert_to_wav(
-                audio_data, audio_file.filename.split('.')[-1])
 
         # Convert the WAV file to raw PCM format for processing
         pcm_data, sample_rate = convert_wav_to_pcm(audio_data)

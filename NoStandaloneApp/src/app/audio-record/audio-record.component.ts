@@ -1,5 +1,4 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-audio-record',
@@ -7,94 +6,61 @@ import { isPlatformBrowser } from '@angular/common';
   styleUrls: ['./audio-record.component.css']
 })
 export class AudioRecordComponent {
-  mediaRecorder: any;
+  mediaRecorder: MediaRecorder | null = null;
   recordedChunks: any[] = [];
   isRecording: boolean = false;
   transcription: string = '';
-  isBrowser: boolean;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: object) {
-    // Check if we are in the browser (not SSR)
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    
-    // Load the MediaRecorder and WAV encoder only in the browser
-    if (this.isBrowser) {
-      this.initializeMediaRecorder();
-    }
+  constructor() {}
+
+  // Start recording using the MediaRecorder API
+  startRecording() {
+    this.recordedChunks = [];
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        this.mediaRecorder = new MediaRecorder(stream);  // Default format is webm/ogg
+        this.mediaRecorder.start();
+        this.isRecording = true;
+
+        this.mediaRecorder.ondataavailable = (event: any) => {
+          if (event.data.size > 0) {
+            this.recordedChunks.push(event.data);
+          }
+        };
+
+        this.mediaRecorder.onstop = async () => {
+          this.isRecording = false;
+          console.log('Recording stopped. Converting to WAV...');
+          const wavBlob = await this.convertToWav(new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType }));
+          this.uploadRecording(wavBlob);
+        };
+      })
+      .catch((err) => {
+        console.error('Error accessing microphone:', err);
+      });
   }
 
-  async initializeMediaRecorder() {
-    try {
-      // Import and register the WAV encoder
-      const { MediaRecorder, register } = await import('extendable-media-recorder');
-      const { connect } = await import('extendable-media-recorder-wav-encoder');
-      await register(await connect());
-      console.log('WAV encoder initialized.');
-    } catch (error) {
-      console.error('Error initializing MediaRecorder or WAV encoder:', error);
-    }
-  }
-
-  async startRecording() {
-    if (!this.isBrowser) return;  // Ensure it's only executed in the browser
-
-    try {
-      // Get the audio stream
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Set up the AudioContext with a sample rate of 16000Hz (or modify as needed)
-      const audioContext = new AudioContext({ sampleRate: 16000 });
-      const mediaStreamAudioSourceNode = new MediaStreamAudioSourceNode(audioContext, { mediaStream: stream });
-      const mediaStreamAudioDestinationNode = new MediaStreamAudioDestinationNode(audioContext);
-
-      // Connect the source to the destination
-      mediaStreamAudioSourceNode.connect(mediaStreamAudioDestinationNode);
-
-      // Use the destination's stream for MediaRecorder
-      this.mediaRecorder = new MediaRecorder(mediaStreamAudioDestinationNode.stream, { mimeType: 'audio/wav' });
-
-      // Start recording
-      this.mediaRecorder.start();
-      this.isRecording = true;
-
-      // Collect the recorded chunks
-      this.mediaRecorder.ondataavailable = (event: any) => {
-        if (event.data.size > 0) {
-          this.recordedChunks.push(event.data);
-        }
-      };
-
-      // Handle stopping of the recorder
-      this.mediaRecorder.onstop = () => {
-        this.isRecording = false;
-        this.uploadRecording();  // Automatically upload the recording
-      };
-
-    } catch (error) {
-      console.error('Error starting recording:', error);
-    }
-  }
-
+  // Stop the recording process
   stopRecording() {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder) {
       this.mediaRecorder.stop();
     }
   }
 
-  uploadRecording() {
-    const blob = new Blob(this.recordedChunks, { type: 'audio/wav' });
+  // Upload the WAV file to the backend
+  uploadRecording(wavBlob: Blob) {
     const formData = new FormData();
-    formData.append('audio_file', blob, 'recording.wav');
-  
+    formData.append('audio_file', wavBlob, 'recording.wav');
+
     fetch('http://127.0.0.1:8000/vad/', {
       method: 'POST',
       body: formData,
     })
     .then(response => response.json())
     .then(data => {
-      console.log('Transcription:', data);
       if (data.transcription) {
         this.transcription = data.transcription;
+        console.log('Transcription:', this.transcription);
       } else {
         console.error('No transcription received');
       }
@@ -104,13 +70,73 @@ export class AudioRecordComponent {
     });
   }
 
+  // Method to convert the recorded audio Blob to WAV format
+  async convertToWav(audioBlob: Blob): Promise<Blob> {
+    const audioContext = new AudioContext();  // Standardized AudioContext
+    const audioBuffer = await audioContext.decodeAudioData(await audioBlob.arrayBuffer());
+
+    const wavBuffer = this.audioBufferToWav(audioBuffer);
+    return new Blob([wavBuffer], { type: 'audio/wav' });
+  }
+
+  // Helper function to convert AudioBuffer to WAV format
+  audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+    const numOfChannels = buffer.numberOfChannels;
+    const length = buffer.length * numOfChannels * 2 + 44;
+    const arrayBuffer = new ArrayBuffer(length);
+    const view = new DataView(arrayBuffer);
+    const channels = [];
+
+    let offset = 0;
+    let position = 0;
+
+    // Write WAV header
+    this.writeString(view, position, 'RIFF'); position += 4;
+    view.setUint32(position, length - 8, true); position += 4;
+    this.writeString(view, position, 'WAVE'); position += 4;
+    this.writeString(view, position, 'fmt '); position += 4;
+    view.setUint32(position, 16, true); position += 4;
+    view.setUint16(position, 1, true); position += 2;
+    view.setUint16(position, numOfChannels, true); position += 2;
+    view.setUint32(position, buffer.sampleRate, true); position += 4;
+    view.setUint32(position, buffer.sampleRate * numOfChannels * 2, true); position += 4;
+    view.setUint16(position, numOfChannels * 2, true); position += 2;
+    view.setUint16(position, 16, true); position += 2;
+    this.writeString(view, position, 'data'); position += 4;
+    view.setUint32(position, length - position - 4, true); position += 4;
+
+    // Interleave audio data
+    for (let i = 0; i < numOfChannels; i++) {
+      channels.push(buffer.getChannelData(i));
+    }
+
+    while (offset < buffer.length) {
+      for (let i = 0; i < numOfChannels; i++) {
+        const sample = Math.max(-1, Math.min(1, channels[i][offset]));
+        view.setInt16(position, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        position += 2;
+      }
+      offset++;
+    }
+
+    return arrayBuffer;
+  }
+
+  // Helper function to write string data
+  writeString(view: DataView, offset: number, string: string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  // Download the recorded audio as a file
   downloadRecording() {
-    const blob = new Blob(this.recordedChunks, { type: 'audio/wav' });
+    const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder?.mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = 'recording.wav';
+    a.download = 'recording.' + this.mediaRecorder?.mimeType.split('/')[1];
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);

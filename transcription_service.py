@@ -1,45 +1,65 @@
 import speech_recognition as sr
 from pydub import AudioSegment
-import io
+from pydub.silence import split_on_silence
 
 
 def transcribe_audio(speech_segments):
     recognizer = sr.Recognizer()
     transcription_result = ""
-    combined_segment = b""
+    combined_audio = AudioSegment.empty()
 
-    min_segment_length = 3200  # Minimum segment length in bytes (~0.1 seconds)
+    # Combine all segments into a single AudioSegment
+    for segment in speech_segments:
+        segment_audio = AudioSegment(
+            data=segment,
+            sample_width=2,
+            frame_rate=16000,
+            channels=1
+        )
+        combined_audio += segment_audio
 
-    for i, segment in enumerate(speech_segments):
-        combined_segment += segment
+    # Apply noise reduction
+    combined_audio = combined_audio.compress_dynamic_range()
 
-        if len(combined_segment) >= min_segment_length:
-            try:
-                # Convert bytes to audio data
-                audio = sr.AudioData(combined_segment, 16000, 2)
+    # Split audio on silence to get cleaner chunks
+    chunks = split_on_silence(
+        combined_audio,
+        min_silence_len=500,
+        silence_thresh=combined_audio.dBFS - 14,
+        keep_silence=500
+    )
 
-                # Transcribe the audio
-                chunk_transcription = recognizer.recognize_google(
-                    audio, language="en-US")
+    for i, chunk in enumerate(chunks):
+        # Skip chunks that are too short (less than 0.5 seconds)
+        if len(chunk) < 500:
+            continue
 
-                # Add the transcription of the current chunk to the final result
-                transcription_result += chunk_transcription + " "
+        chunk_bytes = chunk.raw_data
+        try:
+            audio = sr.AudioData(chunk_bytes, 16000, 2)
+            result = recognizer.recognize_google(
+                audio, language="en-US", show_all=True)
 
-                # Print each chunk transcription (optional)
-                print(f"Combined segment transcription: {chunk_transcription}")
-
-                # Reset the combined segment
-                combined_segment = b""
-
-            except sr.UnknownValueError:
+            if result and 'alternative' in result:
+                best_result = result['alternative'][0]
+                if 'confidence' in best_result and best_result['confidence'] > 0.5:
+                    transcription_result += best_result['transcript'].capitalize(
+                    ) + ". "
+                else:
+                    transcription_result += "[Low Confidence] "
+            else:
                 transcription_result += "[Unintelligible] "
-            except sr.RequestError as e:
-                transcription_result += f"[API error: {e}] "
-                print(
-                    f"Could not request results from Google Speech Recognition service; {e}")
-            except Exception as e:
-                transcription_result += f"[Error: {e}] "
-                print(f"Error processing segment {i + 1}: {e}")
 
-    # Return the final accumulated transcription
+        except sr.UnknownValueError:
+            pass
+        except sr.RequestError as e:
+            print(
+                f"Could not request results from Google Speech Recognition service; {e}")
+        except Exception as e:
+            print(f"Error processing chunk {i + 1}: {e}")
+
+    # Clean up the transcription
+    transcription_result = transcription_result.replace(" .", ".")
+    transcription_result = transcription_result.replace("  ", " ")
+
     return transcription_result.strip()

@@ -4,43 +4,6 @@ from pydub import AudioSegment
 import io
 
 
-def convert_wav_to_pcm(audio_data):
-    """
-    Converts WAV audio data to raw PCM data.
-
-    Parameters:
-    audio_data (bytes): The binary content of the WAV file.
-
-    Returns:
-    tuple: A tuple containing raw PCM data (bytes) and the sample rate (int).
-
-    Raises:
-    ValueError: If the audio format is invalid (e.g., not mono, not 16-bit, or unsupported sample rate).
-    """
-    """
-    Converts WAV audio data to raw PCM data using pydub for format compatibility.
-    """
-
-    try:
-        # Use pydub to convert the audio to PCM format
-        audio = AudioSegment.from_file(io.BytesIO(audio_data), format="wav")
-        audio = audio.set_channels(1).set_sample_width(2).set_frame_rate(16000)
-
-        # Export the audio as raw PCM data
-        pcm_data = audio.raw_data
-        sample_rate = audio.frame_rate
-
-        print("Channels:", {audio.channels})
-        print("pcm_data:", {pcm_data})
-        print("sample_rate", {sample_rate})
-
-        return pcm_data, sample_rate
-
-    except Exception as e:
-        print(f"Error while converting WAV to PCM: {e}")
-        raise
-
-
 def process_audio_with_vad(pcm_data, sample_rate=16000):
     print("\nEntered function for VAD processing")
 
@@ -73,5 +36,16 @@ def process_audio_with_vad(pcm_data, sample_rate=16000):
             raise ValueError("Error while processing frame")
 
     # Print the number of detected speech segments
-    print(f"Detected {len(speech_segments)} speech segments.")
+    # print(f"Detected {len(speech_segments)} speech segments.")
     return speech_segments
+
+
+def convert_wav_to_pcm(audio_data: bytes):
+    try:
+        audio = AudioSegment.from_wav(io.BytesIO(audio_data))
+        audio = audio.set_channels(1).set_frame_rate(16000)
+        buffer = io.BytesIO()
+        audio.export(buffer, format="wav")
+        return buffer.getvalue(), 16000
+    except Exception as e:
+        raise ValueError(f"Error converting WAV to PCM: {str(e)}")
