@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Transcription</title>
+    <script>
+        function updateTranscription() {
+            fetch('/get_transcription')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("transcription").innerText = data.transcript;
+                });
+        }
+
+        setInterval(updateTranscription, 500);  // Update transcription every second
+    </script>
+</head>
+<body>
+    <h1>Live Speech Transcription</h1>
+    <div id="transcription" style="font-size: 24px; border: 1px solid black; padding: 10px;"></div>
+</body>
+</html>

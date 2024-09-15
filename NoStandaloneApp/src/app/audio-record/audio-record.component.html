@@ -1,0 +1,10 @@
+<div class="controls">
+  <button (click)="startRecording()" [disabled]="isRecording">Start Recording</button>
+  <button (click)="stopRecording()" [disabled]="!isRecording">Stop Recording</button>
+  <button (click)="downloadRecording()" [disabled]="!recordedChunks.length">Download Recording</button>
+</div>
+
+<div *ngIf="transcription">
+  <h3>Transcription:</h3>
+  <p>{{ transcription }}</p>
+</div>
