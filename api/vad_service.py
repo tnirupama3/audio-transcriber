@@ -1,8 +1,8 @@
 from typing import Union
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from vad_algorithm import process_audio_with_vad, convert_wav_to_pcm
-from transcription_service import transcribe_audio
+from api.vad_algorithm import process_audio_with_vad, convert_wav_to_pcm
+from api.transcription_service import transcribe_audio
 from pydub import AudioSegment
 from fastapi.middleware.cors import CORSMiddleware
 import subprocess
@@ -54,8 +54,8 @@ app = FastAPI()
 # CORS settings (adjust as needed)
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins (you can limit this to specific domains)
-    allow_origins=["*"],
+    # Replace with your Angular app's URL
+    allow_origins=["http://localhost:4200"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

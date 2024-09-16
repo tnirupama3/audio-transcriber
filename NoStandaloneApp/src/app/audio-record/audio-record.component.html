@@ -1,9 +1,16 @@
 <div class="controls">
-  <button (click)="startRecording()" [disabled]="isRecording">Start Recording</button>
-  <button (click)="stopRecording()" [disabled]="!isRecording">Stop Recording</button>
-  <button (click)="downloadRecording()" [disabled]="!recordedChunks.length">Download Recording</button>
+  <!-- Start/Stop button depending on the recording state -->
+  <button (click)="isRecording ? stopRecording() : startRecording()">
+    {{ isRecording ? 'Stop Recording' : 'Start Recording' }}
+  </button>
+
+  <!-- Download button, only enabled if there are recorded chunks -->
+  <button (click)="downloadRecording()" [disabled]="!recordedChunks.length || isRecording">
+    Download Recording
+  </button>
 </div>
 
+<!-- Display transcription when available -->
 <div *ngIf="transcription">
   <h3>Transcription:</h3>
   <p>{{ transcription }}</p>

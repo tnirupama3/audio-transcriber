@@ -1,22 +1,24 @@
+// src/app/app.module.ts
+
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule, provideHttpClient, withFetch } from '@angular/common/http'; // Import withFetch
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 
 import { AppComponent } from './app.component';
-import { AudioRecordComponent } from './audio-record/audio-record.component';
+import { AudioRecordComponent } from './audio-record/audio-record.component';  // Import the component here
 
 @NgModule({
   declarations: [
     AppComponent,
-    AudioRecordComponent
+    AudioRecordComponent  // Declare the component here
   ],
   imports: [
     BrowserModule,
+    FormsModule,
     HttpClientModule
   ],
-  providers: [
-    provideHttpClient(withFetch())  // Enable fetch in HttpClient
-  ],
+  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

@@ -1,0 +1,79 @@
+/* Basic reset for margin and padding */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Center the controls and transcription on the page */
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 20px;
+  }
+  
+  /* Styling for buttons */
+  button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:disabled {
+    background-color: #ccc; /* Disabled state color */
+    cursor: not-allowed;
+  }
+  
+  button:not(:disabled):hover {
+    background-color: #45a049; /* Slightly darker green on hover */
+  }
+  
+  /* Styling for transcription display */
+  .transcription {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .transcription h3 {
+    font-size: 1.5rem;
+    color: #333;
+  }
+  
+  .transcription p {
+    font-size: 1.2rem;
+    color: #555;
+    line-height: 1.6;
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+  
+  /* Responsive design: Adjust button sizes and transcription layout for smaller screens */
+  @media (max-width: 600px) {
+    .controls {
+      flex-direction: column;
+      gap: 10px;
+    }
+  
+    button {
+      width: 100%;
+      font-size: 14px;
+      padding: 10px 0;
+    }
+  
+    .transcription p {
+      font-size: 1rem;
+      padding: 10px;
+    }
+  }
+  
