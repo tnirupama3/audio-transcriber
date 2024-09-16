@@ -1,0 +1,7 @@
+fastapi==0.95.2
+uvicorn==0.22.0
+pydub==0.25.1
+webrtcvad==2.0.10
+speechrecognition==3.8.1
+ffmpeg-python==0.2.0
+python-multipart==0.0.5
